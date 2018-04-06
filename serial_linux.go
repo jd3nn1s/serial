@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
-	"syscall"
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
@@ -130,7 +129,7 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 
 func (p *Port) getCommModemStatus() (status int, err error) {
 	var returnStatus int
-	_, _, errno := unix.Syscall(syscall.SYS_IOCTL,
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
 		uintptr(p.f.Fd()),
 		uintptr(unix.TIOCMGET),
 		uintptr(unsafe.Pointer(&returnStatus)))
@@ -160,7 +159,7 @@ func (p *Port) SetDtrOn() error {
 		return err
 	}
 	currentStatus &= unix.TIOCM_DTR
-	_, _, errno := syscall.Syscall(unix.SYS_IOCTL,
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
 		uintptr(p.f.Fd()),
 		uintptr(unix.TIOCMSET),
 		uintptr(unsafe.Pointer(&currentStatus)))
