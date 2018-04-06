@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+	"syscall"
 )
 
 func openPort(name string, baud int, databits byte, parity Parity, stopbits StopBits, readTimeout time.Duration) (p *Port, err error) {
@@ -127,6 +128,18 @@ func openPort(name string, baud int, databits byte, parity Parity, stopbits Stop
 	return &Port{f: f}, nil
 }
 
+func (p *Port) getCommModemStatus() (status int, err error) {
+	var returnStatus int
+	_, _, errno := unix.Syscall(syscall.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMGET),
+		uintptr(unsafe.Pointer(&returnStatus)))
+	if errno != 0 {
+		return 0, errno
+	}
+	return returnStatus, nil
+}
+
 type Port struct {
 	// We intentionly do not use an "embedded" struct so that we
 	// don't export File
@@ -139,6 +152,98 @@ func (p *Port) Read(b []byte) (n int, err error) {
 
 func (p *Port) Write(b []byte) (n int, err error) {
 	return p.f.Write(b)
+}
+
+func (p *Port) SetDtrOn() error {
+	currentStatus, err := p.getCommModemStatus()
+	if err != nil {
+		return err
+	}
+	currentStatus &= unix.TIOCM_DTR
+	_, _, errno := syscall.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMSET),
+		uintptr(unsafe.Pointer(&currentStatus)))
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (p *Port) SetDtrOff() error {
+	currentStatus, err := p.getCommModemStatus()
+	if err != nil {
+		return err
+	}
+	currentStatus &^= unix.TIOCM_DTR
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMSET),
+		uintptr(unsafe.Pointer(&currentStatus)))
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOn() error {
+	currentStatus, err := p.getCommModemStatus()
+	if err != nil {
+		return err
+	}
+	currentStatus &= unix.TIOCM_RTS
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMSET),
+		uintptr(unsafe.Pointer(&currentStatus)))
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (p *Port) SetRtsOff() error {
+	currentStatus, err := p.getCommModemStatus()
+	if err != nil {
+		return err
+	}
+	currentStatus &^= unix.TIOCM_RTS
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCMSET),
+		uintptr(unsafe.Pointer(&currentStatus)))
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (p *Port) GetCommModemStatus() (err error, CTSOn, DSROn, RingOn, DSDOn bool) {
+	CTSOn, DSROn, RingOn, DSDOn = false, false, false, false
+
+	currentStatus, err := p.getCommModemStatus()
+	if err != nil {
+		return err, CTSOn, DSROn, RingOn, DSDOn
+	}
+
+	if currentStatus&unix.TIOCM_CTS != 0 {
+		CTSOn = true
+	}
+	if currentStatus&unix.TIOCM_DSR != 0 {
+		DSROn = true
+	}
+	if currentStatus&unix.TIOCM_RNG != 0 {
+		RingOn = true
+	}
+	if currentStatus&unix.TIOCM_CAR != 0 {
+		DSDOn = true
+	}
+
+	return nil, CTSOn, DSROn, RingOn, DSDOn
 }
 
 // Discards data written to the port but not transmitted,
