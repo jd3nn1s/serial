@@ -221,6 +221,30 @@ func (p *Port) SetRtsOff() error {
 	return nil
 }
 
+func (p *Port) SetBreakOn() error {
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCSBRK),
+		0)
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func (p *Port) SetBreakOff() error {
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL,
+		uintptr(p.f.Fd()),
+		uintptr(unix.TIOCCBRK),
+		0)
+
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
 func (p *Port) GetCommModemStatus() (err error, CTSOn, DSROn, RingOn, DSDOn bool) {
 	CTSOn, DSROn, RingOn, DSDOn = false, false, false, false
 

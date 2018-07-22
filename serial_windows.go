@@ -134,6 +134,8 @@ func (p *Port) Flush() error {
 }
 
 var (
+	nSetCommBreak,
+	nClearCommBreak,
 	nSetCommState,
 	nSetCommTimeouts,
 	nSetCommMask,
@@ -154,6 +156,8 @@ func init() {
 	}
 	defer syscall.FreeLibrary(k32)
 
+	nSetCommBreak = getProcAddr(k32, "SetCommBreak")
+	nClearCommBreak = getProcAddr(k32, "ClearCommBreak")
 	nSetCommState = getProcAddr(k32, "SetCommState")
 	nSetCommTimeouts = getProcAddr(k32, "SetCommTimeouts")
 	nSetCommMask = getProcAddr(k32, "SetCommMask")
@@ -197,6 +201,22 @@ func (p *Port) SetRtsOff() error {
 func (p *Port) SetRtsOn() error {
 	const SETRTS = 0x0003
 	r, _, err := syscall.Syscall(nEscapeCommFunction, 2, uintptr(p.fd), SETRTS, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetBreakOn() error {
+	r, _, err := syscall.Syscall(nSetCommBreak, 1, uintptr(p.fd), 0, 0)
+	if r == 0 {
+		return err
+	}
+	return nil
+}
+
+func (p *Port) SetBreakOff() error {
+	r, _, err := syscall.Syscall(nClearCommBreak, 1, uintptr(p.fd), 0, 0)
 	if r == 0 {
 		return err
 	}
