@@ -1,9 +1,7 @@
-sudo: false
 language: go
 go:
-  - 1.4
-  - 1.9
-  - tip
+  - 1.11
+  - 1.x
 env:
   - GOOS=linux CGO=1
   - GOOS=linux CGO=0
